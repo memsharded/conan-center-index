@@ -11,7 +11,7 @@ class NanaConan(ConanFile):
     name = "nana"
     url = "https://github.com/conan-io/conan-center-index"
     homepage = "https://github.com/cnjinhao/nana"
-    topics = ("entity", "conan")
+    topics = ("gui", "conan")
     license = "BSL-1.0 License"
     description = "Nana is a C++ standard-like GUI library designed to allow developers to easily create cross-platform GUI applications"
     settings = "os", "compiler", "build_type", "arch"

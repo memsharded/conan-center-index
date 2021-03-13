@@ -6,7 +6,6 @@ if(WIN32 AND BUILD_SHARED_LIBS)
 endif()
 
 include(conanbuildinfo.cmake)
-conan_basic_setup(TARGETS)
+conan_basic_setup()
 
-add_definitions(-D_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING)
 add_subdirectory(source_subfolder)
