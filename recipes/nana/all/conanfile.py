@@ -25,9 +25,7 @@ class NanaConan(ConanFile):
     }
     generators = "cmake"
 
-    exports_sources = "CMakeLists.txt"
-
-    _cmake = None
+    exports_sources = "CMakeLists.txt", "patches/**"
 
     def requirements(self):
         if self.settings.os == "Linux":
@@ -53,27 +51,25 @@ class NanaConan(ConanFile):
         tools.get(**self.conan_data["sources"][self.version])
         os.rename("nana-" + self.version, self._source_subfolder)
 
-
-    def _configure_cmake(self):
-        if self._cmake:
-            return self._cmake
-        self._cmake = CMake(self)
-        self._cmake.definitions["NANA_CMAKE_STD_FILESYSTEM_FORCE"] = "ON"
-        if self.settings.compiler == "Visual Studio":
-            rt = "ON" if "MT" in str(self.settings.compiler.runtime)  else "OFF"
-            self._cmake.definitions["MSVC_USE_STATIC_RUNTIME"] = rt
-        self._cmake.configure(build_folder=self._build_subfolder)
-        return self._cmake
+    def _patch_sources(self):
+        for patch in self.conan_data.get("patches", {}).get(self.version, []):
+            tools.patch(**patch)
 
     def build(self):
-        cmake = self._configure_cmake()
+        self._patch_sources()
+        cmake = CMake(self)
+        if self.settings.compiler == "Visual Studio":
+            rt = "ON" if "MT" in str(self.settings.compiler.runtime)  else "OFF"
+            cmake.definitions["MSVC_USE_STATIC_RUNTIME"] = rt
+        cmake.configure(build_folder=self._build_subfolder)
         cmake.build()
 
     def package(self):
-        cmake = self._configure_cmake()
-        cmake.install()
+        self.copy("*", src=os.path.join(self._source_subfolder, "include"), dst="include")
+        self.copy("*.lib", src=os.path.join(self._build_subfolder, "lib"), dst="lib")
+        self.copy("*.a", src=os.path.join(self._build_subfolder, "lib"), dst="lib")
         self.copy("LICENSE", src=self._source_subfolder, dst="licenses", keep_path=False)
 
     def package_info(self):
-        debug = "-d" if self.settings.build_type == "Debug" else ""
+
         self.cpp_info.libs = ["nana"]
