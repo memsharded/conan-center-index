@@ -36,10 +36,6 @@ class CppunitConan(ConanFile):
     def _settings_build(self):
         return getattr(self, "settings_build", self.settings)
 
-    @property
-    def _user_info_build(self):
-        return getattr(self, "user_info_build", self.deps_user_info)
-
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -56,8 +52,6 @@ class CppunitConan(ConanFile):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2/cci.latest")
-        if is_msvc(self):
-            self.tool_requires("automake/1.16.5")
 
     def source(self):
         get(self, **self.conan_data["sources"][self.version],
@@ -88,12 +82,10 @@ class CppunitConan(ConanFile):
 
         if is_msvc(self):
             env = Environment()
-            compile_wrapper = unix_path(self, self._user_info_build["automake"].compile)
-            ar_wrapper = unix_path(self, self._user_info_build["automake"].ar_lib)
-            env.define("CC", f"{compile_wrapper} cl -nologo")
-            env.define("CXX", f"{compile_wrapper} cl -nologo")
+            env.define("CC", "cl -nologo")
+            env.define("CXX", "cl -nologo")
             env.define("LD", "link -nologo")
-            env.define("AR", f"{ar_wrapper} \"lib -nologo\"")
+            env.define("AR", "ar")
             env.define("NM", "dumpbin -symbols")
             env.define("OBJDUMP", ":")
             env.define("RANLIB", ":")
@@ -108,8 +100,7 @@ class CppunitConan(ConanFile):
     def package(self):
         copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         autotools = Autotools(self)
-        # TODO: replace by autotools.install() once https://github.com/conan-io/conan/issues/12153 fixed
-        autotools.install(args=[f"DESTDIR={unix_path(self, self.package_folder)}"])
+        autotools.install()
         if is_msvc(self) and self.options.shared:
             rename(self, os.path.join(self.package_folder, "lib", "cppunit.dll.lib"),
                          os.path.join(self.package_folder, "lib", "cppunit.lib"))
