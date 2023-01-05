@@ -81,11 +81,13 @@ class CppunitConan(ConanFile):
         tc.generate()
 
         if is_msvc(self):
+            compile_wrapper = self.conf.get("tools.gnu.automake:compile_wrapper", "")
+            ar_wrapper = self.conf.get("tools.gnu.automake:ar_wrapper", "ar")
             env = Environment()
-            env.define("CC", "cl -nologo")
-            env.define("CXX", "cl -nologo")
+            env.define("CC", f"{compile_wrapper} cl -nologo")
+            env.define("CXX", f"{compile_wrapper} cl -nologo")
             env.define("LD", "link -nologo")
-            env.define("AR", "ar")
+            env.define("AR", f"{ar_wrapper} \"lib -nologo\"")
             env.define("NM", "dumpbin -symbols")
             env.define("OBJDUMP", ":")
             env.define("RANLIB", ":")

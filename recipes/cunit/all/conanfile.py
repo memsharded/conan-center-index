@@ -57,7 +57,6 @@ class CunitConan(ConanFile):
         return getattr(self, "settings_build", self.settings)
 
     def build_requirements(self):
-        self.build_requires("libtool/2.4.6")
         if self._settings_build.os == "Windows" and not tools.get_env("CONAN_BASH_PATH"):
             self.build_requires("msys2/cci.latest")
 
@@ -67,19 +66,17 @@ class CunitConan(ConanFile):
             for f in glob.glob("*.c"):
                 os.chmod(f, 0o644)
 
-    @property
-    def _user_info_build(self):
-        return getattr(self, "user_info_build", self.deps_user_info)
-
     @contextmanager
     def _build_context(self):
         env = {}
         if self.settings.compiler == "Visual Studio":
             with tools.vcvars(self.settings):
+                compile_wrapper = self.conf.get("tools.gnu.automake:compile_wrapper", "")
+                ar_wrapper = self.conf.get("tools.gnu.automake:ar_wrapper", "ar")
                 env.update({
-                    "AR": "{} lib".format(tools.unix_path(self._user_info_build["automake"].ar_lib)),
-                    "CC": "{} cl -nologo".format(tools.unix_path(self._user_info_build["automake"].compile)),
-                    "CXX": "{} cl -nologo".format(tools.unix_path(self._user_info_build["automake"].compile)),
+                    "AR": f"{ar_wrapper} lib",
+                    "CC": f"{compile_wrapper} cl -nologo",
+                    "CXX": f"{compile_wrapper} cl -nologo",
                     "NM": "dumpbin -symbols",
                     "OBJDUMP": ":",
                     "RANLIB": ":",
@@ -121,7 +118,7 @@ class CunitConan(ConanFile):
             tools.patch(**patch)
         with self._build_context():
             with tools.chdir(self._source_subfolder):
-                self.run("{} -fiv".format(tools.get_env("AUTORECONF")), win_bash=tools.os_info.is_windows)
+                self.run("autoreconf -fiv", win_bash=tools.os_info.is_windows)
                 autotools = self._configure_autotools()
                 autotools.make()
 

@@ -56,7 +56,7 @@ class MSYS2Conan(ConanFile):
     }
     default_options = {
         "exclude_files": "*/link.exe",
-        "packages": "base-devel,binutils,gcc",
+        "packages": "base-devel,binutils,gcc,automake1.16,autoconf-wrapper,automake-wrapper,libtool",
         "additional_packages": None,
     }
 
@@ -188,6 +188,8 @@ class MSYS2Conan(ConanFile):
 
         self.conf_info.define("tools.microsoft.bash:subsystem", "msys2")
         self.conf_info.define("tools.microsoft.bash:path", os.path.join(msys_bin, "bash.exe"))
+        self.conf_info.define_path("tools.gnu.automake:compile_wrapper", "/usr/share/automake-1.16/compile")
+        self.conf_info.define_path("tools.gnu.automake:ar_wrapper", "/usr/share/automake-1.16/ar-lib")
 
         # conan v1 specific stuff
         self.env_info.MSYS_ROOT = msys_root

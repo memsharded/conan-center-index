@@ -42,7 +42,6 @@ class VerilatorConan(ConanFile):
         if self._settings_build.os == "Windows" and "CONAN_BASH_PATH" not in os.environ:
             if self.settings.compiler == "Visual Studio":
                 self.build_requires("msys2/cci.latest")
-                self.build_requires("automake/1.16.4")
             if self._needs_old_bison:
                 # don't upgrade to bison 3.7.0 or above, or it fails to build
                 # because of https://github.com/verilator/verilator/pull/2505
@@ -58,9 +57,6 @@ class VerilatorConan(ConanFile):
                 self.build_requires("bison/3.5.3")
             else:
                 self.build_requires("bison/3.7.6")
-        if Version(self.version) >= "4.224":
-            self.build_requires("autoconf/2.71")
-
 
     def requirements(self):
         if self.settings.os == "Windows":
@@ -81,13 +77,16 @@ class VerilatorConan(ConanFile):
         
         if self.settings.os == "Windows" and Version(self.version) >= "4.200":
             raise ConanInvalidConfiguration("Windows build is not yet supported. Contributions are welcome")
+
     @contextmanager
     def _build_context(self):
         if self.settings.compiler == "Visual Studio":
+            compile_wrapper = self.conf.get("tools.gnu.automake:compile_wrapper", "")
+            ar_wrapper = self.conf.get("tools.gnu.automake:ar_wrapper", "ar")
             build_env = {
-                "CC": "{} cl -nologo".format(tools.unix_path(self.deps_user_info["automake"].compile)),
-                "CXX": "{} cl -nologo".format(tools.unix_path(self.deps_user_info["automake"].compile)),
-                "AR": "{} lib".format(tools.unix_path(self.deps_user_info["automake"].ar_lib)),
+                "CC": f"{compile_wrapper} cl -nologo",
+                "CXX": f"{compile_wrapper} cl -nologo",
+                "AR": f"{ar_wrapper}",
             }
             with tools.vcvars(self.settings):
                 with tools.environment_append(build_env):
