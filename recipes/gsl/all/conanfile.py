@@ -2,7 +2,7 @@ from conan import ConanFile
 from conan.tools.apple import fix_apple_shared_install_name
 from conan.tools.env import VirtualBuildEnv
 from conan.tools.files import apply_conandata_patches, copy, export_conandata_patches, get, rename, rm, rmdir
-from conan.tools.gnu import Autotools, AutotoolsToolchain
+from conan.tools.gnu import Autotools, GnuToolchain
 from conan.tools.layout import basic_layout
 from conan.tools.microsoft import check_min_vs, is_msvc, unix_path
 import os
@@ -64,7 +64,7 @@ class GslConan(ConanFile):
         env = VirtualBuildEnv(self)
         env.generate()
 
-        tc = AutotoolsToolchain(self)
+        tc = GnuToolchain(self)
         if self.settings.os == "Windows":
             tc.extra_defines.extend(["HAVE_WIN_IEEE_INTERFACE", "WIN32"])
             if self.options.shared:
@@ -72,27 +72,12 @@ class GslConan(ConanFile):
         if self.settings.os == "Linux" and "x86" in self.settings.arch:
             tc.extra_defines.append("HAVE_GNUX86_IEEE_INTERFACE")
         if is_msvc(self):
-            tc.configure_args.extend([
-                "ac_cv_func_memcpy=yes",
-                "ac_cv_func_memmove=yes",
-                "ac_cv_c_c99inline=no",
-            ])
-            if check_min_vs(self, "180", raise_invalid=False):
-                tc.extra_cflags.append("-FS")
-        env = tc.environment()
-        if is_msvc(self):
-            automake_conf = self.dependencies.build["automake"].conf_info
-            compile_wrapper = unix_path(self, automake_conf.get("user.automake:compile-wrapper", check_type=str))
-            ar_wrapper = unix_path(self, automake_conf.get("user.automake:lib-wrapper", check_type=str))
-            env.define("CC", f"{compile_wrapper} cl -nologo")
-            env.define("CXX", f"{compile_wrapper} cl -nologo")
-            env.define("LD", "link -nologo")
-            env.define("AR", f"{ar_wrapper} \"lib -nologo\"")
-            env.define("NM", "dumpbin -symbols")
-            env.define("OBJDUMP", ":")
-            env.define("RANLIB", ":")
-            env.define("STRIP", ":")
-        tc.generate(env)
+            tc.configure_args.update({
+                "ac_cv_func_memcpy": "yes",
+                "ac_cv_func_memmove": "yes",
+                "ac_cv_c_c99inline": "no"}
+            )
+        tc.generate()
 
     def build(self):
         apply_conandata_patches(self)

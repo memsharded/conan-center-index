@@ -4,7 +4,7 @@ from conan.tools.apple import fix_apple_shared_install_name, is_apple_os
 from conan.tools.build import cross_building, stdcpp_library
 from conan.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv
 from conan.tools.files import copy, get, rm, rmdir, save, rename, export_conandata_patches, apply_conandata_patches
-from conan.tools.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps
+from conan.tools.gnu import Autotools, GnuToolchain, AutotoolsDeps
 from conan.tools.layout import basic_layout
 from conan.tools.microsoft import is_msvc, unix_path, check_min_vs
 import os
@@ -85,63 +85,21 @@ class DjVuLibreConan(ConanFile):
         if not cross_building(self):
             VirtualRunEnv(self).generate(scope="build")
 
-        tc = AutotoolsToolchain(self)
+        tc = GnuToolchain(self)
         jpeg = self.dependencies[self.options.with_libjpeg.value].cpp_info.aggregated_components()
         tiff = self.dependencies["libtiff"].cpp_info.aggregated_components()
-        tc.configure_args.extend([
-            f"JPEG_LIBS={' '.join(f'-l{l}' for l in jpeg.libs)}",
-            f"TIFF_LIBS={' '.join(f'-l{l}' for l in tiff.libs)}",
-        ])
+        tc.configure_args.update({
+            "JPEG_LIBS": ' '.join(f'-l{l}' for l in jpeg.libs),
+            "TIFF_LIBS": ' '.join(f'-l{l}' for l in tiff.libs),
+        })
         if is_msvc(self):
             tc.extra_cxxflags.append("-EHsc")
-            if check_min_vs(self, "180", raise_invalid=False):
-                tc.extra_cflags.append("-FS")
-                tc.extra_cxxflags.append("-FS")
             tc.extra_ldflags.append("-ladvapi32")
+            tc.extra_env.unset("AR")
         tc.generate()
 
-        if is_msvc(self):
-            env = Environment()
-            automake_conf = self.dependencies.build["automake"].conf_info
-            compile_wrapper = unix_path(self, automake_conf.get("user.automake:compile-wrapper", check_type=str))
-            ar_wrapper = unix_path(self, automake_conf.get("user.automake:lib-wrapper", check_type=str))
-            env.define("CC", f"{compile_wrapper} cl -nologo")
-            env.define("CXX", f"{compile_wrapper} cl -nologo")
-            env.define("LD", "link -nologo")
-            env.define("AR", f"{ar_wrapper} lib")
-            env.define("NM", "dumpbin -symbols")
-            env.vars(self).save_script("conanbuild_msvc")
-
-        if is_msvc(self):
-            # Custom AutotoolsDeps for cl-like compilers
-            # workaround for https://github.com/conan-io/conan/issues/12784
-            includedirs = []
-            defines = []
-            libs = []
-            libdirs = []
-            linkflags = []
-            cxxflags = []
-            cflags = []
-            for dependency in self.dependencies.values():
-                deps_cpp_info = dependency.cpp_info.aggregated_components()
-                includedirs.extend(deps_cpp_info.includedirs)
-                defines.extend(deps_cpp_info.defines)
-                libs.extend(deps_cpp_info.libs + deps_cpp_info.system_libs)
-                libdirs.extend(deps_cpp_info.libdirs)
-                linkflags.extend(deps_cpp_info.sharedlinkflags + deps_cpp_info.exelinkflags)
-                cxxflags.extend(deps_cpp_info.cxxflags)
-                cflags.extend(deps_cpp_info.cflags)
-
-            env = Environment()
-            env.append("CPPFLAGS", [f"-I{unix_path(self, p)}" for p in includedirs] + [f"-D{d}" for d in defines])
-            env.append("_LINK_", [lib if lib.endswith(".lib") else f"{lib}.lib" for lib in libs])
-            env.append("LDFLAGS", [f"-L{unix_path(self, p)}" for p in libdirs] + linkflags)
-            env.append("CXXFLAGS", cxxflags)
-            env.append("CFLAGS", cflags)
-            env.vars(self).save_script("conanautotoolsdeps_cl_workaround")
-        else:
-            deps = AutotoolsDeps(self)
-            deps.generate()
+        deps = AutotoolsDeps(self)
+        deps.generate()
 
     def _patch_sources(self):
         apply_conandata_patches(self)

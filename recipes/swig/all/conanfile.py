@@ -4,7 +4,7 @@ from conan import ConanFile
 from conan.tools.apple import is_apple_os, to_apple_arch
 from conan.tools.env import VirtualBuildEnv, Environment
 from conan.tools.files import apply_conandata_patches, chdir, copy, export_conandata_patches, get, rmdir, replace_in_file
-from conan.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
+from conan.tools.gnu import Autotools, AutotoolsDeps, GnuToolchain
 from conan.tools.layout import basic_layout
 from conan.tools.microsoft import is_msvc, unix_path
 from conan.tools.scm import Version
@@ -82,66 +82,38 @@ class SwigConan(ConanFile):
         build_env = VirtualBuildEnv(self)
         build_env.generate()
 
-        tc = AutotoolsToolchain(self)
-        env = tc.environment()
+        tc = GnuToolchain(self)
+        env = tc.extra_env
 
         pcre = "pcre2" if self._use_pcre2 else "pcre"
-        tc.configure_args += [
-            f"--host={self.settings.arch}",
-            "--with-swiglibdir=${prefix}/bin/swiglib",
-            f"--with-{pcre}-prefix={self.dependencies[pcre].package_folder}",
-        ]
+        tc.configure_args.update({
+            "--host": f"{self.settings.arch}",
+            "--with-swiglibdir": f"${prefix}/bin/swiglib",
+            f"--with-{pcre}-prefix": f"{self.dependencies[pcre].package_folder}",
+        })
         tc.extra_cflags.append("-DHAVE_PCRE=1")
         if self._use_pcre2:
             env.define("PCRE2_LIBS", " ".join("-l" + lib for lib in self.dependencies["pcre2"].cpp_info.libs))
 
         if self.settings.os in ["Linux", "FreeBSD"]:
-            tc.configure_args.append("LIBS=-ldl")
+            tc.configure_args["LIBS"] = "ldl"
             tc.extra_defines.append("HAVE_UNISTD_H=1")
         elif self.settings.os == "Windows":
             if is_msvc(self):
                 env.define("CC", "cccl -FS")
                 env.define("CXX", "cccl -FS")
-                tc.configure_args.append("--disable-ccache")
+                tc.configure_args["--disable-ccache"] = None
             else:
                 tc.extra_ldflags.append("-static")
-                tc.configure_args.append("LIBS=-lmingwex -lssp")
+                tc.configure_args["LIBS"] ="-lmingwex -lssp"
         elif is_apple_os(self):
             tc.extra_cflags.append(f"-arch {to_apple_arch(self)}")
             tc.extra_cxxflags.append(f"-arch {to_apple_arch(self)}")
             tc.extra_ldflags.append(f"-arch {to_apple_arch(self)}")
         tc.generate(env)
 
-        if is_msvc(self):
-            # Custom AutotoolsDeps for cl-like compilers
-            # workaround for https://github.com/conan-io/conan/issues/12784
-            includedirs = []
-            defines = []
-            libs = []
-            libdirs = []
-            linkflags = []
-            cxxflags = []
-            cflags = []
-            for dependency in self.dependencies.values():
-                deps_cpp_info = dependency.cpp_info.aggregated_components()
-                includedirs.extend(deps_cpp_info.includedirs)
-                defines.extend(deps_cpp_info.defines)
-                libs.extend(deps_cpp_info.libs + deps_cpp_info.system_libs)
-                libdirs.extend(deps_cpp_info.libdirs)
-                linkflags.extend(deps_cpp_info.sharedlinkflags + deps_cpp_info.exelinkflags)
-                cxxflags.extend(deps_cpp_info.cxxflags)
-                cflags.extend(deps_cpp_info.cflags)
-
-            env = Environment()
-            env.append("CPPFLAGS", [f"-I{unix_path(self, p)}" for p in includedirs] + [f"-D{d}" for d in defines])
-            env.append("_LINK_", [lib if lib.endswith(".lib") else f"{lib}.lib" for lib in libs])
-            env.append("LDFLAGS", [f"-L{unix_path(self, p)}" for p in libdirs] + linkflags)
-            env.append("CXXFLAGS", cxxflags)
-            env.append("CFLAGS", cflags)
-            env.vars(self).save_script("conanautotoolsdeps_cl_workaround")
-        else:
-            deps = AutotoolsDeps(self)
-            deps.generate()
+        deps = AutotoolsDeps(self)
+        deps.generate()
 
     def _patch_sources(self):
         apply_conandata_patches(self)

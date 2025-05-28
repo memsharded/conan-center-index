@@ -6,7 +6,7 @@ from conan.tools.apple import is_apple_os
 from conan.tools.build import cross_building
 from conan.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv
 from conan.tools.files import chdir, copy, get, rename, replace_in_file, rm, rmdir
-from conan.tools.gnu import Autotools, AutotoolsToolchain
+from conan.tools.gnu import Autotools, GnuToolchain
 from conan.tools.layout import basic_layout
 from conan.tools.microsoft import is_msvc, unix_path
 
@@ -75,26 +75,10 @@ class GiflibConan(ConanFile):
         if not cross_building(self):
             env = VirtualRunEnv(self)
             env.generate(scope="build")
-        tc = AutotoolsToolchain(self)
+        tc = GnuToolchain(self)
         if is_msvc(self):
             tc.extra_defines.append("USE_GIF_DLL" if self.options.shared else "USE_GIF_LIB")
-            tc.extra_cflags.append("-FS")
         tc.generate()
-
-        if is_msvc(self):
-            env = Environment()
-            automake_conf = self.dependencies.build["automake"].conf_info
-            compile_wrapper = unix_path(self, automake_conf.get("user.automake:compile-wrapper", check_type=str))
-            env.define("CC", f"{compile_wrapper} cl -nologo")
-            env.define("CXX", f"{compile_wrapper} cl -nologo")
-            env.define("LD", "link -nologo")
-            # ar-lib wrapper is added by ./configure automatically
-            # env.define("AR", f'{ar_wrapper} "lib -nologo"')
-            env.define("NM", "dumpbin -symbols")
-            env.define("OBJDUMP", ":")
-            env.define("RANLIB", ":")
-            env.define("STRIP", ":")
-            env.vars(self).save_script("conanbuild_msvc")
 
     def _patch_sources(self):
         # disable util build - tools and internal libs
