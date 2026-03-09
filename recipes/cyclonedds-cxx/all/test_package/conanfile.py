@@ -5,7 +5,7 @@ from conan.tools.build import can_run
 
 class CycloneDDSCXXTestConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    generators = "CMakeToolchain", "CMakeDeps", "VirtualRunEnv"
+    generators = "CMakeToolchain", "CMakeConfigDeps", "VirtualRunEnv"
     test_type = "explicit"
 
     def layout(self):
@@ -13,6 +13,9 @@ class CycloneDDSCXXTestConan(ConanFile):
 
     def requirements(self):
         self.requires(self.tested_reference_str)
+
+    def build_requirements(self):
+        self.tool_requires(self.tested_reference_str)
 
     def build(self):
         cmake = CMake(self)

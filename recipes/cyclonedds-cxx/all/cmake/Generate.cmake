@@ -22,15 +22,12 @@ find_package(CycloneDDS REQUIRED)
 
 # find idlcxx shared library
 set(CMAKE_FIND_LIBRARY_SUFFIXES .dll ${CMAKE_FIND_LIBRARY_SUFFIXES})
-if(CMAKE_CROSSCOMPILING)
-  find_library(_idlcxx_shared_lib cycloneddsidlcxx NO_CMAKE_FIND_ROOT_PATH REQUIRED)
-else()
+
   find_library(_idlcxx_shared_lib
     NAMES cycloneddsidlcxx
     PATHS ${CMAKE_CURRENT_LIST_DIR}/../../bin/
           ${CMAKE_CURRENT_LIST_DIR}/../../lib/
     NO_DEFAULT_PATH)
-endif()
 
 if(_idlcxx_shared_lib)
   set(_idlcxx_depends "")

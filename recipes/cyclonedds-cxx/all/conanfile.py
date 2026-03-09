@@ -69,7 +69,8 @@ class CycloneDDSCXXConan(ConanFile):
         #      <dds/sub/detail/DataReader.hpp>:31
         #      <dds/topic/detail/TTopicImpl.hpp>:26
         #      <dds/topic/detail/Topic.hpp>:34
-        self.requires("cyclonedds/{}".format(self.version), transitive_headers=True)
+        run_trait = (self.context == "build")  # When in the build context, we need the IDLC compiler
+        self.requires("cyclonedds/{}".format(self.version), transitive_headers=True, run=run_trait)
 
         if self.options.with_shm:
             self.requires("iceoryx/2.0.5")
