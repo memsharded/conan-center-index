@@ -1,0 +1,1 @@
+. "/mnt/c/Users/Diego/conanws/conan-center-index/recipes/openssl/3.x.x/build-release/conan/conanrunenv-release-x86_64.sh"

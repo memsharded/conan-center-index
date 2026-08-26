@@ -1,0 +1,1 @@
+. "/mnt/c/Users/Diego/conanws/conan-center-index/recipes/openssl/3.x.x/build-release/conan/deactivate_conanbuildenv-release-x86_64.sh" && . "/mnt/c/Users/Diego/conanws/conan-center-index/recipes/openssl/3.x.x/build-release/conan/deactivate_conanautotoolstoolchain.sh"

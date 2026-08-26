@@ -1,0 +1,8 @@
+include(default)
+
+[tool_requires]
+cmake/[*]
+
+[conf]
+tools.microsoft.bash:subsystem=msys2
+tools.microsoft.bash:path=bash

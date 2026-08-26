@@ -3,11 +3,15 @@ import os
 from conan import ConanFile
 from conan.tools.apple import is_apple_os, to_apple_arch
 from conan.tools.env import VirtualBuildEnv, Environment
+<<<<<<< HEAD
 from conan.tools.files import apply_conandata_patches, chdir, copy, export_conandata_patches, get, rmdir, replace_in_file
 from conan.tools.gnu import Autotools, AutotoolsDeps, GnuToolchain
+=======
+from conan.tools.files import chdir, copy, get, rmdir, replace_in_file
+from conan.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
+>>>>>>> master
 from conan.tools.layout import basic_layout
 from conan.tools.microsoft import is_msvc, unix_path
-from conan.tools.scm import Version
 
 required_conan_version = ">=1.53.0"
 
@@ -35,20 +39,12 @@ class SwigConan(ConanFile):
 
     def export_sources(self):
         copy(self, "cmake/*", src=self.recipe_folder, dst=self.export_sources_folder)
-        export_conandata_patches(self)
 
     def layout(self):
         basic_layout(self, src_folder="src")
 
-    @property
-    def _use_pcre2(self):
-        return Version(self.version) >= "4.1"
-
     def requirements(self):
-        if self._use_pcre2:
-            self.requires("pcre2/10.43")
-        else:
-            self.requires("pcre/8.45")
+        self.requires("pcre2/[>=10.43 <11]")
         if is_apple_os(self):
             self.requires("libgettext/0.22")
 
@@ -62,17 +58,11 @@ class SwigConan(ConanFile):
                 self.tool_requires("msys2/cci.latest")
             if is_msvc(self):
                 self.tool_requires("cccl/1.3")
-        if Version(self.version) >= "4.2":
-            if is_msvc(self):
-                # bison 3.8.2 is not ready for msvc
-                self.tool_requires("bison/3.7.6")
-            else:
-                self.tool_requires("bison/3.8.2")
+        if is_msvc(self):
+            # bison 3.8.2 is not ready for msvc
+            self.tool_requires("bison/3.7.6")
         else:
-            if is_msvc(self):
-                self.tool_requires("winflexbison/2.5.25")
-            else:
-                self.tool_requires("bison/3.8.2")
+            self.tool_requires("bison/3.8.2")
         self.tool_requires("automake/1.16.5")
 
     def source(self):
@@ -82,6 +72,7 @@ class SwigConan(ConanFile):
         build_env = VirtualBuildEnv(self)
         build_env.generate()
 
+<<<<<<< HEAD
         tc = GnuToolchain(self)
         env = tc.extra_env
 
@@ -97,6 +88,21 @@ class SwigConan(ConanFile):
 
         if self.settings.os in ["Linux", "FreeBSD"]:
             tc.configure_args["LIBS"] = "ldl"
+=======
+        tc = AutotoolsToolchain(self)
+        tc.extra_defines.append("HAVE_PCRE=1")
+        env = tc.environment()
+
+        pcre = "pcre2"
+        tc.configure_args += [
+            f"--host={self.settings.arch}",
+            "--with-swiglibdir=${prefix}/bin/swiglib",
+            f"--with-{pcre}-prefix={self.dependencies[pcre].package_folder}",
+        ]
+
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            tc.configure_args.append("LIBS=-ldl -lpcre2-8")
+>>>>>>> master
             tc.extra_defines.append("HAVE_UNISTD_H=1")
         elif self.settings.os == "Windows":
             if is_msvc(self):
@@ -116,7 +122,6 @@ class SwigConan(ConanFile):
         deps.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
         # Rely on AutotoolsDeps instead of pcre2-config
         # https://github.com/swig/swig/blob/v4.1.1/configure.ac#L70-L92
         # https://github.com/swig/swig/blob/v4.0.2/configure.ac#L65-L86
@@ -159,13 +164,3 @@ class SwigConan(ConanFile):
         self.cpp_info.set_property("cmake_build_modules", [self._cmake_module_rel_path])
 
         self.buildenv_info.define_path("SWIG_LIB", os.path.join(self.package_folder, "bin", "swiglib"))
-
-        # TODO: to remove in conan v2 once cmake_find_package_* generators removed
-        self.cpp_info.names["cmake_find_package"] = "SWIG"
-        self.cpp_info.names["cmake_find_package_multi"] = "SWIG"
-        self.cpp_info.build_modules["cmake_find_package"] = [self._cmake_module_rel_path]
-        self.cpp_info.build_modules["cmake_find_package_multi"] = [self._cmake_module_rel_path]
-
-        bindir = os.path.join(self.package_folder, "bin")
-        self.env_info.PATH.append(bindir)
-        self.env_info.SWIG_LIB = os.path.join(self.package_folder, "bin", "swiglib")
